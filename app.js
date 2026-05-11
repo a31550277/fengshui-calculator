@@ -227,6 +227,7 @@ let hasGeneratedReport = false;
 let comparisonCases = [];
 let latestResult = null;
 let editingComparisonId = null;
+let importMode = "single";
 
 function initPalaceGrid() {
   palaceGrid.innerHTML = palaceDefinitions.map(([value, title, palace, hint]) => `
@@ -703,6 +704,8 @@ function evaluate(input) {
   const strengths = [];
   const fixes = [];
   const missingData = [];
+  const effectiveBuildingDirection = effectiveDirection(input.buildingFacing, input.buildingFacingDegrees);
+  const effectiveDoorDirection = effectiveDirection(input.unitDoorFacing, input.unitDoorDegrees);
 
   addRule(strengths, input.external.includes("brightHall"), {
     title: "前方明堂佳",
@@ -716,6 +719,24 @@ function evaluate(input) {
     school: "形勢派",
     text: "後方穩定能降低背後空虛感，傳統上稱有靠山，現代上也常對應安靜與安全感。"
   });
+  addRule(strengths, input.external.includes("waterView"), {
+    title: "外局見水景",
+    score: 4,
+    school: "形勢派 / 現代居住",
+    text: "水景或開闊水面可帶來視覺舒展與採光優勢，但仍要看潮濕、噪音、蚊蟲與安全性，不能單獨視為大加分。"
+  });
+  addRule(strengths, input.external.includes("quietStreet"), {
+    title: "外局安靜穩定",
+    score: 8,
+    school: "形勢派 / 現代居住",
+    text: "外部街廓安靜、夜間車流低，通常比華麗景觀更能直接提升長住舒適與睡眠品質。"
+  });
+  addRule(strengths, input.external.includes("cleanApproach"), {
+    title: "入口與公共區乾淨明亮",
+    score: 5,
+    school: "形勢派 / 現代居住",
+    text: "社區入口、門廳、梯間整潔明亮，代表日常納氣與回家感受較佳，也反映管理品質。"
+  });
   addRule(strengths, input.internal.includes("regularShape"), {
     title: "格局方正",
     score: 10,
@@ -723,10 +744,28 @@ function evaluate(input) {
     text: "方正格局通常坪效高、家具好配置、視覺與動線更穩。"
   });
   addRule(strengths, input.internal.includes("goodCommand"), {
-    title: "主位安定",
+    title: "床 / 沙發 / 書桌有靠且視野穩定",
     score: 8,
     school: "形勢派 / 陽宅三要",
     text: "床、沙發與書桌有靠且能看見入口，可提升睡眠、專注與安全感。"
+  });
+  addRule(strengths, input.internal.includes("centerClear"), {
+    title: "中宮清爽",
+    score: 6,
+    school: "形勢派 / 八宅派 / 現代居住",
+    text: "房屋中心保持通透、整潔、無重壓，通常有助於動線流暢與整體穩定感。"
+  });
+  addRule(strengths, input.internal.includes("separateZones"), {
+    title: "公私區域分明",
+    score: 6,
+    school: "現代居住 / 形勢派",
+    text: "公共活動區與休息區互不干擾，較能兼顧作息、隱私與家庭互動。"
+  });
+  addRule(strengths, input.internal.includes("crossVentLayout"), {
+    title: "格局具對流條件",
+    score: 7,
+    school: "現代居住 / 形勢派",
+    text: "有明確對流路徑的格局更容易排濕散熱，也更符合長住舒適需求。"
   });
   addRule(strengths, input.living.includes("excellentLight"), {
     title: "光風濕條件佳",
@@ -751,6 +790,24 @@ function evaluate(input) {
     score: 5,
     school: "現代居住",
     text: "好配置的房子更容易保持清爽，這是實際居住裡最常被低估的風水。"
+  });
+  addRule(strengths, input.living.includes("bedroomLight"), {
+    title: "主臥採光穩定",
+    score: 6,
+    school: "現代居住",
+    text: "主臥有穩定自然光能改善作息與起床品質，對長住感受非常關鍵。"
+  });
+  addRule(strengths, input.living.includes("quietSleep"), {
+    title: "睡眠干擾低",
+    score: 8,
+    school: "現代居住",
+    text: "夜間安靜、臥室不受人車音干擾，對健康與恢復力的幫助通常大於許多抽象加分。"
+  });
+  addRule(strengths, input.living.includes("goodManagement"), {
+    title: "管理與維護品質佳",
+    score: 5,
+    school: "現代居住",
+    text: "管理良好的社區通常能降低公共空間髒亂、設備失修與鄰里衝突風險。"
   });
 
   addRule(redFlags, input.external.includes("roadRush"), {
@@ -780,6 +837,32 @@ function evaluate(input) {
     school: "形勢派",
     text: "外部尖銳形體會形成視覺壓力，若正對窗、床或沙發，感受會被放大。",
     fix: "用窗簾、霧面貼、植栽或改變座位視線降低直視。"
+  });
+  addRule(redFlags, input.external.includes("elevatedPressure"), {
+    title: "大型外部量體壓迫",
+    severity: "medium",
+    score: -11,
+    school: "形勢派 / 現代居住",
+    text: "高架、軌道、天橋或巨大量體貼近住宅，常伴隨噪音、灰塵、風切與視覺壓迫。",
+    fix: "優先確認臥室與客廳是否正面受壓；若無法避開，至少要靠隔音與視線遮擋降低影響。"
+  });
+  addRule(redFlags, input.external.includes("lowLand"), {
+    title: "地勢低窪或排水疑慮",
+    severity: "medium",
+    score: -10,
+    school: "形勢派 / 現代居住",
+    text: "低窪地勢容易在豪雨、颱風或社區排水不足時放大積水與潮濕問題。",
+    buy: "買房建議查地下室、防水與排水紀錄，並實問颱風或暴雨後狀況。",
+    rent: "租房至少確認一樓、地下室、車道與公共區是否曾積水。"
+  });
+  addRule(redFlags, input.external.includes("constructionUncertainty"), {
+    title: "周邊長期變數高",
+    severity: "low",
+    score: -6,
+    school: "形勢派 / 現代居住",
+    text: "周邊空地、施工或未定開發會讓未來噪音、採光、景觀與人流有較大不確定性。",
+    buy: "買房可查都市計畫、建照與未來鄰地用途。",
+    rent: "租房若是短租可接受，但長住要保守。"
   });
   addRule(redFlags, input.external.includes("noise"), {
     title: "高噪音外局",
@@ -831,6 +914,30 @@ function evaluate(input) {
     school: "陽宅三要 / 八宅派",
     text: "門、主、灶是陽宅三要核心，大門見灶常被視為財庫外露，也會有油煙與隱私問題。",
     fix: "以半高櫃、拉門或餐邊櫃修正視線。"
+  });
+  addRule(redFlags, input.internal.includes("longCorridor"), {
+    title: "狹長走道或多門相沖",
+    severity: "medium",
+    score: -8,
+    school: "形勢派 / 現代居住",
+    text: "過長走道、穿心廊或多門相對，常讓動線破碎、視覺緊張，也不利空氣停留。",
+    fix: "用燈光、端景、地毯或收納節點把走道切段，降低一眼望穿的感覺。"
+  });
+  addRule(redFlags, input.internal.includes("kitchenBathConflict"), {
+    title: "廚廁過近或相對",
+    severity: "medium",
+    score: -9,
+    school: "陽宅三要 / 現代居住",
+    text: "廚房與廁所相鄰、相對或共壁太重，會同時牽涉油煙、濕氣、衛生與使用感受。",
+    fix: "加強排風、除濕與門片管理，並留意共壁滲水與氣味傳遞。"
+  });
+  addRule(redFlags, input.internal.includes("darkCenter"), {
+    title: "中宮昏暗壓迫",
+    severity: "medium",
+    score: -8,
+    school: "形勢派 / 八宅派 / 現代居住",
+    text: "房屋中心若昏暗、堆物或壓迫，常讓整體空間感變差，動線與情緒也容易被拖累。",
+    fix: "優先清出中心區、補照明、減少高櫃與堆積。"
   });
   addRule(redFlags, input.internal.includes("beam"), {
     title: "樑壓常停留區",
@@ -892,6 +999,32 @@ function evaluate(input) {
     buy: "買房看窗框、玻璃、外牆、頂樓隔熱與冷氣管線。",
     rent: "租房直接估夏季電費與冷氣效率。"
   });
+  addRule(redFlags, input.living.includes("poorVentilation"), {
+    title: "通風差與悶感明顯",
+    severity: "medium",
+    score: -9,
+    school: "現代居住",
+    text: "空氣不流動的房子容易放大濕氣、氣味與熱，長住會顯著降低舒適與健康感受。",
+    fix: "先確認可否形成對流、是否能補循環扇與除濕；若先天無窗面差，需保守評估。"
+  });
+  addRule(redFlags, input.living.includes("odorSmoke"), {
+    title: "異味或油煙倒灌",
+    severity: "medium",
+    score: -10,
+    school: "現代居住",
+    text: "油煙、二手菸、廁所異味或排氣倒灌會直接影響居住品質，也常代表管道規劃不佳。",
+    buy: "買房要查管道間、排風路徑與鄰戶使用狀況。",
+    rent: "租房建議晚餐時段與夜間各看一次最準。"
+  });
+  addRule(redFlags, input.living.includes("poorSoundproof"), {
+    title: "隔音不足",
+    severity: "medium",
+    score: -11,
+    school: "現代居住",
+    text: "樓上腳步聲、管道音、鄰房談話聲若明顯，會持續消耗睡眠與情緒耐受度。",
+    buy: "買房建議做平日晚間與假日時段實測。",
+    rent: "租房若對聲音敏感，這類條件通常比租金更值得優先考慮。"
+  });
 
   const directionalFindings = evaluateDirectionalFactors(input);
   const palaceFindings = evaluatePalaces(input);
@@ -901,8 +1034,8 @@ function evaluate(input) {
   findings.push(...uniqueFindings([...strengths, ...redFlags, ...directionalFindings.findings, ...palaceFindings.findings, ...classical.findings]));
   fixes.push(...redFlags.map((item) => item.fix).filter(Boolean), ...directionalFindings.fixes, ...palaceFindings.fixes, ...classical.fixes);
 
-  if (input.buildingFacing === "unknown") missingData.push("建物 / 社區主要朝向尚不確定，玄空與外局判斷會保守處理。");
-  if (input.unitDoorFacing === "unknown") missingData.push("本戶大門朝向尚不確定，八宅與陽宅三要判斷會保守處理。");
+  if (!effectiveBuildingDirection) missingData.push("建物 / 社區主要朝向尚不確定，玄空與外局判斷會保守處理。");
+  if (!effectiveDoorDirection) missingData.push("本戶大門朝向尚不確定，八宅與陽宅三要判斷會保守處理。");
   if (input.orientationAccuracy !== "none" && input.buildingFacingDegrees === null) missingData.push("已選坐向量測精度，但尚未輸入建物精確度數，二十四山與玄空判斷會被降權。");
   if (input.orientationAccuracy !== "none" && input.unitDoorDegrees === null) missingData.push("已選坐向量測精度，但尚未輸入本戶大門度數，門向與九宮關係會被降權。");
   if (input.orientationAccuracy === "none") missingData.push("沒有坐向量測；玄空飛星與本戶門向判讀都只能保守處理。");
@@ -915,15 +1048,14 @@ function evaluate(input) {
   if (!Object.values(input.palaces).includes("bedroom")) missingData.push("九宮格未標示主臥位置。");
   if (!Object.values(input.palaces).includes("kitchen")) missingData.push("九宮格未標示廚房 / 爐灶位置。");
 
-  let score = 68;
-  score += scoreItems([...strengths, ...redFlags], input);
-  score += contextAdjustments(input, redFlags);
+  const scoreSummary = calculateScoreSummary(input, strengths, redFlags);
 
   const confidence = estimateConfidence(input, missingData);
-  const clamped = Math.max(0, Math.min(100, Math.round(score)));
+  const clamped = Math.max(0, Math.min(100, Math.round(scoreSummary.score)));
 
   return {
     score: clamped,
+    scoreSummary,
     confidence,
     auditTrail: buildAuditTrail(input),
     accuracyReport: buildAccuracyReport(input),
@@ -1232,11 +1364,32 @@ function uniqueFindings(items) {
   });
 }
 
-function scoreItems(items, input) {
-  return items.reduce((sum, item) => {
-    const score = item.score || 0;
-    return sum + score * schoolWeightFactor(item, input) * accuracyFactor(item, input);
-  }, 0);
+function rawWeightedItemScore(item, input) {
+  const score = item.score || 0;
+  return score * schoolWeightFactor(item, input) * accuracyFactor(item, input);
+}
+
+function calculateScoreSummary(input, strengths, redFlags) {
+  const positiveRaw = strengths.reduce((sum, item) => sum + Math.max(0, rawWeightedItemScore(item, input)), 0);
+  const negativeRaw = redFlags.reduce((sum, item) => sum + Math.abs(Math.min(0, rawWeightedItemScore(item, input))), 0);
+  const contextRaw = contextAdjustments(input, redFlags);
+
+  const baseScore = 63;
+  const positiveImpact = 20 * Math.tanh(positiveRaw / 58);
+  const negativeImpact = 31 * Math.tanh(negativeRaw / 52);
+  const contextImpact = 8 * Math.tanh(contextRaw / 10);
+  const score = baseScore + positiveImpact - negativeImpact + contextImpact;
+
+  return {
+    baseScore,
+    positiveRaw,
+    negativeRaw,
+    contextRaw,
+    positiveImpact,
+    negativeImpact,
+    contextImpact,
+    score
+  };
 }
 
 function schoolWeightFactor(item, input) {
@@ -1280,7 +1433,7 @@ function contextAdjustments(input, redFlags) {
     if (input.condition === "problem") adjustment -= 5;
   }
 
-  if (input.budgetPressure === "high" && redFlags.length > 0) adjustment += 2;
+  if (input.budgetPressure === "high" && redFlags.length > 0) adjustment -= 2;
   if (input.homeType === "studio" && redFlags.length >= 5) adjustment -= 5;
   if (input.floor <= 1 && input.homeType !== "townhouse") adjustment -= 5;
   if (input.floor === input.totalFloors && input.totalFloors >= 4) adjustment -= 3;
@@ -1318,8 +1471,8 @@ function buildAccuracyReport(input) {
 }
 
 function buildMethodAudit(input) {
-  const hasBuildingDirection = input.buildingFacingDegrees !== null;
-  const hasUnitDirection = input.unitDoorFacing !== "unknown" || input.unitDoorDegrees !== null;
+  const hasBuildingDirection = Boolean(effectiveDirection(input.buildingFacing, input.buildingFacingDegrees));
+  const hasUnitDirection = Boolean(effectiveDirection(input.unitDoorFacing, input.unitDoorDegrees));
   const hasKua = Boolean(calculateKuaNumber(input.residentBirthYear, input.residentGender));
   const hasCoreRooms = Object.values(input.palaces).includes("entry")
     && Object.values(input.palaces).includes("bedroom")
@@ -1405,7 +1558,7 @@ function buildSchoolReports(input, findings, palaceFindings) {
       key: "eight",
       title: "八宅派 / 九宮",
       weight: weight.eight,
-      principle: "看門、房、灶、廁落宮與方位象徵；完整版需加入居住者命卦。",
+      principle: "看門、房、灶、廁落宮與方位象徵，並比對居住者命卦與四吉四凶方。",
       items: grouped.eight
     },
     {
@@ -1489,12 +1642,20 @@ function buildDecision(input, score, redFlags, strengths) {
 }
 
 function buildNextChecks(input, redFlags, missingData) {
+  const effectiveDoorDirection = effectiveDirection(input.unitDoorFacing, input.unitDoorDegrees);
   const checks = [
-    "用手機羅盤先量大門朝向，再記錄門所在九宮與門朝出去的方向。",
     "白天、晚上、假日各看一次，分別確認採光、噪音、人流與停車。",
     "拍攝大門、客廳窗、主臥床位、廚房爐台、廁所與外部道路照片。",
     "確認是否有漏水、壁癌、霉味、窗框滲水、天花板修補痕跡。"
   ];
+
+  if (!effectiveDoorDirection) {
+    checks.unshift("用手機羅盤先量大門朝向，再記錄門所在九宮與門朝出去的方向。");
+  } else if (input.unitDoorDegrees === null) {
+    checks.unshift("已填本戶大門朝向，但建議補量大門度數，並同時記錄門所在九宮與門朝出去的方向。");
+  } else if (input.unitDoorFacing === "unknown") {
+    checks.unshift("已填本戶大門度數，建議同步確認八方門向標示，避免後續閱讀報告時混淆。");
+  }
 
   if (input.purpose === "buy") {
     checks.push("買房加查：實價登錄、管委會紀錄、修繕基金、鄰損、消防與逃生動線。");
@@ -1516,7 +1677,7 @@ function buildNextChecks(input, redFlags, missingData) {
   }
   if (missingData.length) checks.push("補齊缺漏資料後重新評估，避免用模糊輸入做過度判斷。");
 
-  return checks;
+  return [...new Set(checks)];
 }
 
 function calculateKuaNumber(year, gender) {
@@ -1655,8 +1816,8 @@ function render(input, result) {
   report.innerHTML = `
     ${card("決策結論", `<div class="report-head"><div><h2>${result.decision.label}</h2><p class="muted">${result.decision.text}</p></div><span class="badge ${result.decision.tone}">${labels[input.purpose]}模式</span></div>
       ${summaryMatrix(input, result)}`)}
-    ${card("重大紅旗", renderList(result.redFlags.map(renderFinding), "沒有觸發重大紅旗，但仍需現場確認漏水、噪音與坐向。"), badge(result.redFlags.length, result.redFlags.length >= 2 ? "danger" : "warn"))}
-    ${card("主要優勢", renderList(result.strengths.map(renderFinding), "目前沒有明顯優勢，建議補更多平面圖與外部環境資料。"), badge(result.strengths.length, "good"))}
+    ${card("重大紅旗", renderList(result.redFlags.map((item) => renderFinding(item, input.purpose)), "沒有觸發重大紅旗，但仍需現場確認漏水、噪音與坐向。"), badge(result.redFlags.length, result.redFlags.length >= 2 ? "danger" : "warn"))}
+    ${card("主要優勢", renderList(result.strengths.map((item) => renderFinding(item, input.purpose)), "目前沒有明顯優勢，建議補更多平面圖與外部環境資料。"), badge(result.strengths.length, "good"))}
     ${card("可改善與不可逆判斷", renderList(result.fixes, "目前沒有明確改善建議；維持通風、乾燥、清爽動線即可。"), `<span class="badge">優先低成本</span>`)}
     ${card("三大風水計算", renderClassicalReports(result.classicalReports), `<span class="badge good">新增計算模組</span>`)}
     ${card("規則與版本", renderAuditTrail(input), `<span class="badge neutral">可稽核</span>`)}
@@ -1691,6 +1852,16 @@ function syncComparisonActionState() {
   addComparison.textContent = editingComparisonId ? "更新比較物件" : "加入比較";
 }
 
+function safeFilenamePart(value, fallback = "untitled") {
+  const normalized = String(value || "")
+    .trim()
+    .replace(/[<>:"/\\|?*\u0000-\u001F]/g, " ")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+  return normalized || fallback;
+}
+
 function renderComparison() {
   if (!comparisonCases.length) {
     comparisonPanel.innerHTML = `
@@ -1698,6 +1869,9 @@ function renderComparison() {
         <p class="section-label">COMPARE</p>
         <h2>多物件比較</h2>
         <p>按「加入比較」後，這裡會列出多個物件的分數、信心、紅旗、優勢與決策建議。</p>
+        <div class="mini-actions">
+          <button type="button" class="secondary mini-button" data-action="import-all">匯入比較 JSON</button>
+        </div>
       </article>
     `;
     syncComparisonActionState();
@@ -1714,6 +1888,10 @@ function renderComparison() {
         <span class="badge good">${comparisonCases.length} 件</span>
       </div>
       <p class="muted">比較分數已統一使用同一組權重：${weightPresetText(baselinePreset)}${baselineWeights ? `｜形勢 ${baselineWeights.form} / 八宅 ${baselineWeights.eight} / 玄空 ${baselineWeights.flying} / 陽宅 ${baselineWeights.three} / 現代 ${baselineWeights.modern}` : ""}</p>
+      <div class="mini-actions">
+        <button type="button" class="secondary mini-button" data-action="export-all">匯出比較 JSON</button>
+        <button type="button" class="secondary mini-button" data-action="import-all">匯入比較 JSON</button>
+      </div>
       <div class="matrix">
         ${sorted.map((item, index) => `
           <div class="mini comparison-item ${item.id === editingComparisonId ? "is-editing" : ""}">
@@ -1744,6 +1922,28 @@ function exportPayload() {
   };
 }
 
+function exportSinglePayload() {
+  const input = serializeFormInput();
+  const result = latestResult || evaluate(input);
+  return buildCaseRecord(input, result);
+}
+
+function exportComparisonPayload() {
+  const baseline = currentComparisonBaseline();
+  rebuildComparisonCases(baseline);
+  const current = applyComparisonWeights(serializeFormInput(), baseline.weights, baseline.preset);
+  const currentResult = latestResult || evaluate(current);
+  return {
+    exportedAt: new Date().toISOString(),
+    app: "feng-shui-calculator-pro",
+    type: "comparison-bundle",
+    profile: schoolProfile,
+    baseline,
+    current: buildCaseRecord(current, currentResult),
+    comparisons: comparisonCases
+  };
+}
+
 function downloadJson(filename, payload) {
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
@@ -1764,6 +1964,45 @@ function importPayload(payload) {
     form.requestSubmit();
   }
   comparisonCases = Array.isArray(payload.comparisons) ? payload.comparisons : [];
+  renderComparison();
+}
+
+function importSinglePayload(payload) {
+  const current = payload.current?.input || payload.input || payload;
+  if (!current) throw new Error("找不到可匯入的物件資料。");
+  applyInputData(current);
+  editingComparisonId = null;
+  hasGeneratedReport = true;
+  form.requestSubmit();
+}
+
+function importComparisonPayload(payload) {
+  const importedCases = Array.isArray(payload.comparisons)
+    ? payload.comparisons
+    : Array.isArray(payload.cases)
+      ? payload.cases
+      : [];
+  if (!importedCases.length) throw new Error("找不到可匯入的多物件比較資料。");
+  comparisonCases = importedCases;
+  const baseline = payload.baseline || currentComparisonBaseline();
+  if (baseline?.preset && baseline.preset !== "custom") {
+    applyWeightPreset(baseline.preset);
+  }
+  if (baseline?.weights) {
+    form.elements.weightForm.value = baseline.weights.form;
+    form.elements.weightEight.value = baseline.weights.eight;
+    form.elements.weightFlying.value = baseline.weights.flying;
+    form.elements.weightThree.value = baseline.weights.three;
+    form.elements.weightModern.value = baseline.weights.modern;
+    form.elements.weightPreset.value = baseline.preset || detectWeightPreset(baseline.weights);
+  }
+  if (payload.current?.input) {
+    applyInputData(payload.current.input);
+    hasGeneratedReport = true;
+    form.requestSubmit();
+  }
+  editingComparisonId = null;
+  syncComparisonBaselineFromForm();
   renderComparison();
 }
 
@@ -1815,8 +2054,9 @@ function badge(text, tone = "") {
   return `<span class="badge ${tone}">${text} 項</span>`;
 }
 
-function renderFinding(item) {
-  const extra = [item.buy, item.rent, item.fix].filter(Boolean).join(" ");
+function renderFinding(item, purpose = "buy") {
+  const modeText = purpose === "rent" ? item.rent : item.buy;
+  const extra = [modeText, item.fix].filter(Boolean).join(" ");
   return `<strong>${item.title}</strong>｜${item.school || "綜合"}：${item.text}${extra ? `<br>${extra}` : ""}`;
 }
 
@@ -2018,16 +2258,30 @@ comparisonPanel.addEventListener("click", (event) => {
   const button = event.target.closest("button[data-action]");
   if (!button) return;
   const caseId = button.dataset.caseId;
+  if (button.dataset.action === "export-all") {
+    const bundle = exportComparisonPayload();
+    const bundleName = safeFilenamePart(bundle.current?.name || comparisonCases[0]?.name || "comparison");
+    downloadJson(`feng-shui-comparisons-${bundleName}-${new Date().toISOString().slice(0, 10)}.json`, bundle);
+    return;
+  }
+  if (button.dataset.action === "import-all") {
+    importMode = "comparison";
+    importFile.click();
+    return;
+  }
   if (!caseId) return;
   if (button.dataset.action === "edit-case") startEditingComparisonCase(caseId);
   if (button.dataset.action === "remove-case") removeComparisonCase(caseId);
 });
 
 exportData.addEventListener("click", () => {
-  downloadJson(`feng-shui-report-${new Date().toISOString().slice(0, 10)}.json`, exportPayload());
+  const payload = exportSinglePayload();
+  const objectName = safeFilenamePart(payload.name || form.elements.caseName.value || "single-case");
+  downloadJson(`feng-shui-object-${objectName}.json`, payload);
 });
 
 importData.addEventListener("click", () => {
+  importMode = "single";
   importFile.click();
 });
 
@@ -2036,10 +2290,15 @@ importFile.addEventListener("change", async () => {
   if (!file) return;
   try {
     const payload = JSON.parse(await file.text());
-    importPayload(payload);
+    if (importMode === "comparison") {
+      importComparisonPayload(payload);
+    } else {
+      importSinglePayload(payload);
+    }
   } catch (error) {
     alert(`匯入失敗：${error.message}`);
   } finally {
+    importMode = "single";
     importFile.value = "";
   }
 });
