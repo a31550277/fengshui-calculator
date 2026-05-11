@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>風水看房決策系統 Pro</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <main class="app">
+    <section class="hero">
+      <div class="hero__copy">
+        <p class="kicker">FENG SHUI DUE DILIGENCE</p>
+        <h1>風水看房決策系統 Pro</h1>
+        <p>
+          用「買房 / 租房」不同決策邏輯，整合形勢、八宅、玄空、陽宅三要與現代居住科學。
+          它不是一句吉凶，而是一份能拿去看房、議價、修正格局的判讀報告。
+        </p>
+      </div>
+      <aside class="score-panel" aria-live="polite">
+        <span class="score-panel__label">整體適配分數</span>
+        <strong id="overallScore">--</strong>
+        <span id="overallVerdict">完成輸入後產生報告</span>
+        <div class="score-bar"><i id="scoreBar"></i></div>
+      </aside>
+    </section>
+
+    <section class="workspace">
+      <form id="assessmentForm" class="panel form-panel">
+        <div class="form-head">
+          <div>
+            <p class="section-label">STEP 1</p>
+            <h2>決策情境</h2>
+          </div>
+          <button type="button" class="text-button" id="loadSample">載入完整範例</button>
+        </div>
+        <p class="hint wide">建議每個物件先填「物件名稱」，再按「加入比較」。匯出的 JSON 會保留輸入、分數、規則版本與報告摘要，方便之後重算。</p>
+
+        <div class="grid two">
+          <label class="field">
+            <span>物件名稱</span>
+            <input name="caseName" type="text" placeholder="例：A 社區 8F 東南門">
+          </label>
+          <label class="field">
+            <span>目的</span>
+            <select name="purpose">
+              <option value="buy">買房：重視長期缺陷、增值性、轉手性</option>
+              <option value="rent">租房：重視可改善性、生活舒適、退租彈性</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>居住年限</span>
+            <select name="horizon">
+              <option value="short">1 年內</option>
+              <option value="medium" selected>1 到 5 年</option>
+              <option value="long">5 年以上</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>房屋型態</span>
+            <select name="homeType">
+              <option value="apartment">大樓 / 公寓</option>
+              <option value="townhouse">透天 / 別墅</option>
+              <option value="studio">套房 / 小宅</option>
+              <option value="mixed">住辦 / 店住混合</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>居住人數</span>
+            <input name="occupants" type="number" min="1" max="12" value="2">
+          </label>
+        </div>
+
+        <div class="grid two">
+          <label class="field">
+            <span>主要需求</span>
+            <select name="primaryGoal">
+              <option value="health">健康與睡眠</option>
+              <option value="wealth">財務與事業</option>
+              <option value="study">讀書與專注</option>
+              <option value="relationship">家庭與關係</option>
+              <option value="balanced" selected>整體平衡</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>預算壓力</span>
+            <select name="budgetPressure">
+              <option value="low">低：可為好格局多付一些</option>
+              <option value="medium" selected>中：需要合理取捨</option>
+              <option value="high">高：要用價格補償缺點</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>主要居住者出生年</span>
+            <input name="residentBirthYear" type="number" min="1900" max="2100" placeholder="例：1988">
+          </label>
+          <label class="field">
+            <span>主要居住者性別</span>
+            <select name="residentGender">
+              <option value="unknown">不納入命卦</option>
+              <option value="male">男</option>
+              <option value="female">女</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>換年模式</span>
+            <select name="yearBoundaryMode">
+              <option value="liChun">術數：立春換年</option>
+              <option value="lunarNewYear">官方曆法：農曆新年換年</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="form-head">
+          <div>
+            <p class="section-label">STEP 2</p>
+            <h2>座向與建物</h2>
+          </div>
+        </div>
+        <p class="hint wide">研究報告建議明確區分採向規則與北向基準。若是手機羅盤，通常屬磁北或裝置校正後方向；若未做磁偏角校正，請在報告中保留此限制。</p>
+
+        <div class="grid three">
+          <label class="field">
+            <span>北向基準</span>
+            <select name="northReference">
+              <option value="true">真北</option>
+              <option value="magnetic">磁北/手機羅盤</option>
+              <option value="grid">格網北</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>坐向量測精度</span>
+            <select name="orientationAccuracy">
+              <option value="none">沒有量測</option>
+              <option value="phone">手機羅盤粗量</option>
+              <option value="compass">羅盤量測</option>
+              <option value="pro">專業現場確認</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>爐口/火門朝向</span>
+            <select name="stoveMouthFacing">
+              <option value="unknown">不確定</option>
+              <option value="north">北</option>
+              <option value="northeast">東北</option>
+              <option value="east">東</option>
+              <option value="southeast">東南</option>
+              <option value="south">南</option>
+              <option value="southwest">西南</option>
+              <option value="west">西</option>
+              <option value="northwest">西北</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>建物/社區朝向度數</span>
+            <input name="buildingFacingDegrees" type="number" min="0" max="359" placeholder="度數" class="deg-input">
+          </label>
+          <label class="field">
+            <span>建物/社區主要朝向</span>
+            <select name="buildingFacing">
+              <option value="unknown">不確定</option>
+              <option value="north">北</option>
+              <option value="northeast">東北</option>
+              <option value="east">東</option>
+              <option value="southeast">東南</option>
+              <option value="south">南</option>
+              <option value="southwest">西南</option>
+              <option value="west">西</option>
+              <option value="northwest">西北</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>採向規則</span>
+            <select name="orientationRule">
+              <option value="qiMouth">採氣面/明堂</option>
+              <option value="mainDoor">大門</option>
+              <option value="facade">主立面</option>
+              <option value="siteMountain">坐山/後靠</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>本戶大門度數</span>
+            <input name="unitDoorDegrees" type="number" min="0" max="359" placeholder="度數" class="deg-input">
+          </label>
+          <label class="field">
+            <span>本戶大門朝向</span>
+            <select name="unitDoorFacing">
+              <option value="unknown">不確定</option>
+              <option value="north">北</option>
+              <option value="northeast">東北</option>
+              <option value="east">東</option>
+              <option value="southeast">東南</option>
+              <option value="south">南</option>
+              <option value="southwest">西南</option>
+              <option value="west">西</option>
+              <option value="northwest">西北</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>建造/入伙年份</span>
+            <input name="builtYear" type="number" min="1900" max="2100" value="2016">
+          </label>
+          <label class="field">
+            <span>宅運依據</span>
+            <select name="periodBasis">
+              <option value="completion">建成/入伙</option>
+              <option value="renovation">重大翻修/換天心</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>流年紫白年份</span>
+            <input name="annualStarYear" type="number" min="1900" max="2100" value="2026">
+          </label>
+          <label class="field">
+            <span>屋況</span>
+            <select name="condition">
+              <option value="excellent">新或維護佳</option>
+              <option value="normal" selected>一般</option>
+              <option value="old">老屋但可維修</option>
+              <option value="problem">疑似漏水、壁癌、管線老化</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>樓層</span>
+            <input name="floor" type="number" min="-5" max="120" value="8">
+          </label>
+          <label class="field">
+            <span>總樓層</span>
+            <input name="totalFloors" type="number" min="1" max="120" value="15">
+          </label>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="form-head">
+          <div>
+            <p class="section-label">STEP 3</p>
+            <h2>九宮格配置</h2>
+          </div>
+          <p class="hint">請用最接近平面圖的位置選擇；不確定就選「未知」。</p>
+        </div>
+
+        <div class="palace-grid" id="palaceGrid"></div>
+
+        <div class="divider"></div>
+
+        <div class="form-head">
+          <div>
+            <p class="section-label">STEP 4</p>
+            <h2>外局、內局與生活條件</h2>
+          </div>
+        </div>
+
+        <div class="checks-layout">
+          <fieldset>
+            <legend>外部環境</legend>
+            <label><input type="checkbox" name="external" value="brightHall"> 前方開闊明堂、公園、低壓迫視野</label>
+            <label><input type="checkbox" name="external" value="waterView"> 見水景、河道、湖景或水池</label>
+            <label><input type="checkbox" name="external" value="roadRush"> 路沖、巷沖、車道直衝</label>
+            <label><input type="checkbox" name="external" value="reverseBow"> 反弓路或高架道路外弧</label>
+            <label><input type="checkbox" name="external" value="sharpSha"> 尖角、壁刀、電塔、大型招牌壓迫</label>
+            <label><input type="checkbox" name="external" value="noise"> 高噪音：高架、夜市、宮廟、酒吧、工地</label>
+            <label><input type="checkbox" name="external" value="sensitivePlace"> 醫院、殯葬、宮廟、警消或高人流場所旁</label>
+            <label><input type="checkbox" name="external" value="backSupport"> 後方有穩定靠山：建物、山勢或安靜街廓</label>
+          </fieldset>
+
+          <fieldset>
+            <legend>內部格局</legend>
+            <label><input type="checkbox" name="internal" value="regularShape"> 格局方正、少缺角</label>
+            <label><input type="checkbox" name="internal" value="missingCorner"> 明顯缺角</label>
+            <label><input type="checkbox" name="internal" value="doorToBalcony"> 大門直通陽台或大窗</label>
+            <label><input type="checkbox" name="internal" value="doorToToilet"> 大門正對廁所</label>
+            <label><input type="checkbox" name="internal" value="doorToKitchen"> 大門見廚房或爐台</label>
+            <label><input type="checkbox" name="internal" value="beam"> 床、沙發或書桌上方有樑</label>
+            <label><input type="checkbox" name="internal" value="bedDoor"> 床正對房門或鏡子</label>
+            <label><input type="checkbox" name="internal" value="centerToilet"> 廁所接近房屋中心</label>
+            <label><input type="checkbox" name="internal" value="goodCommand"> 床、沙發、書桌有靠且視野穩定</label>
+          </fieldset>
+
+          <fieldset>
+            <legend>現代居住</legend>
+            <label><input type="checkbox" name="living" value="excellentLight"> 採光通風佳、濕度低</label>
+            <label><input type="checkbox" name="living" value="humid"> 潮濕、霉味、壁癌或漏水痕跡</label>
+            <label><input type="checkbox" name="living" value="privacy"> 隱私佳、不被對面直視</label>
+            <label><input type="checkbox" name="living" value="poorPrivacy"> 窗戶或陽台被直視</label>
+            <label><input type="checkbox" name="living" value="safeAccess"> 動線安全、逃生與門禁良好</label>
+            <label><input type="checkbox" name="living" value="badAccess"> 樓梯、逃生、停車或夜間路線不佳</label>
+            <label><input type="checkbox" name="living" value="heat"> 西曬、頂樓熱、空調成本高</label>
+            <label><input type="checkbox" name="living" value="storage"> 收納與家具配置容易</label>
+          </fieldset>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="form-head">
+          <div>
+            <p class="section-label">STEP 5</p>
+            <h2>流派權重</h2>
+          </div>
+        </div>
+
+        <div class="weight-presets">
+          <label class="field">
+            <span>權重預設</span>
+            <select name="weightPreset" id="weightPreset">
+              <option value="buyConservative">買房保守版</option>
+              <option value="rentPractical">租房實住版</option>
+              <option value="healthSleep">健康睡眠版</option>
+              <option value="traditionalFengShui">傳統風水版</option>
+              <option value="wealthCareer">財運事業版</option>
+              <option value="custom">自訂</option>
+            </select>
+          </label>
+          <p class="hint wide">先選預設再微調最省事；如果你手動拉動下方權重，預設會自動切換成「自訂」。</p>
+        </div>
+
+        <div class="school-sliders">
+          <label>形勢派 <input type="range" name="weightForm" min="0" max="5" value="5"></label>
+          <label>八宅派 <input type="range" name="weightEight" min="0" max="5" value="3"></label>
+          <label>玄空飛星 <input type="range" name="weightFlying" min="0" max="5" value="3"></label>
+          <label>陽宅三要 <input type="range" name="weightThree" min="0" max="5" value="4"></label>
+          <label>現代居住 <input type="range" name="weightModern" min="0" max="5" value="5"></label>
+        </div>
+
+        <label class="field">
+          <span>補充描述</span>
+          <textarea name="notes" rows="4" placeholder="例如：客廳朝南、主臥在西北、廚房在東南、隔壁有高架橋，晚上車聲明顯..."></textarea>
+        </label>
+
+        <div class="actions">
+          <button class="primary" type="submit">生成專業初篩報告</button>
+          <button class="secondary" type="button" id="addComparison">加入比較</button>
+          <button class="secondary" type="button" id="exportData">匯出 JSON</button>
+          <button class="secondary" type="button" id="importData">匯入 JSON</button>
+          <input id="importFile" type="file" accept="application/json,.json" hidden>
+          <button class="secondary" type="reset">重設</button>
+        </div>
+      </form>
+
+      <section class="report" id="report">
+        <article class="panel empty-state">
+          <p class="section-label">REPORT</p>
+          <h2>等待輸入</h2>
+          <p>完成左側資料後，這裡會產生紅旗、優勢、買房/租房決策、流派解析、改善優先序與下次看房清單。</p>
+        </article>
+      </section>
+
+      <section class="report" id="comparisonPanel">
+        <article class="panel empty-state">
+          <p class="section-label">COMPARE</p>
+          <h2>多物件比較</h2>
+          <p>按「加入比較」後，這裡會列出多個物件的分數、信心、紅旗、優勢與決策建議。</p>
+        </article>
+      </section>
+    </section>
+  </main>
+
+  <script src="./app.js"></script>
+</body>
+</html>
